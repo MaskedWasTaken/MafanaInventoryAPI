@@ -7,6 +7,7 @@ import java.sql.SQLException;
 
 import me.TahaCheji.Inv;
 import me.TahaCheji.objects.DatabaseInventoryData;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 
 
@@ -19,7 +20,10 @@ public class InvMysqlInterface {
 		this.inv = inv;
 	}
 	
-	public boolean hasAccount(Player player) {
+	public boolean hasAccount(OfflinePlayer player) {
+		if(!player.hasPlayedBefore()) {
+			return false;
+		}
 		PreparedStatement preparedUpdateStatement = null;
 		ResultSet result = null;
 		Connection conn = inv.getDatabaseManager().getConnection();
@@ -52,7 +56,10 @@ public class InvMysqlInterface {
 		return false;
 	}
 	
-	public boolean createAccount(Player player) {
+	public boolean createAccount(OfflinePlayer player) {
+		if(!player.hasPlayedBefore()) {
+			return false;
+		}
 		PreparedStatement preparedStatement = null;
 		Connection conn = inv.getDatabaseManager().getConnection();
 		if (conn != null) {
@@ -152,6 +159,7 @@ public class InvMysqlInterface {
 		if (!hasAccount(player)) {
 			createAccount(player);
 		}
+
 		PreparedStatement preparedUpdateStatement = null;
 		ResultSet result = null;
 		Connection conn = inv.getDatabaseManager().getConnection();
@@ -183,5 +191,43 @@ public class InvMysqlInterface {
 		}
 		return null;
 	}
+
+	public DatabaseInventoryData getData(OfflinePlayer player) {
+		if (!hasAccount(player)) {
+			createAccount(player);
+		}
+		PreparedStatement preparedUpdateStatement = null;
+		ResultSet result = null;
+		Connection conn = inv.getDatabaseManager().getConnection();
+		if (conn != null) {
+			try {
+				String sql = "SELECT * FROM `" + inv.getConfigHandler().getString("database.mysql.tableName") + "` WHERE `player_uuid` = ? LIMIT 1";
+				preparedUpdateStatement = conn.prepareStatement(sql);
+				preparedUpdateStatement.setString(1, player.getUniqueId().toString());
+
+				result = preparedUpdateStatement.executeQuery();
+				while (result.next()) {
+					return new DatabaseInventoryData(result.getString("inventory"), result.getString("armor"), result.getString("sync_complete"), result.getString("last_seen"));
+				}
+			} catch (SQLException e) {
+				Inv.log.warning("Error: " + e.getMessage());
+				e.printStackTrace();
+			} finally {
+				try {
+					if (result != null) {
+						result.close();
+					}
+					if (preparedUpdateStatement != null) {
+						preparedUpdateStatement.close();
+					}
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		return null;
+	}
+
+
 
 }

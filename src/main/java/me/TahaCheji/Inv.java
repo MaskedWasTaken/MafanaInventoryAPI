@@ -1,18 +1,26 @@
 package me.TahaCheji;
 
+import java.util.List;
 import java.util.logging.Logger;
 
 
 import me.TahaCheji.database.InvMysqlInterface;
 import me.TahaCheji.database.MysqlSetup;
+import me.TahaCheji.discordCommand.InventoryCommand;
 import me.TahaCheji.events.DropItem;
 import me.TahaCheji.events.InventoryClick;
 import me.TahaCheji.events.PlayerJoin;
 import me.TahaCheji.events.PlayerQuit;
+import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.JDABuilder;
+import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.bukkit.Bukkit;
 import org.bukkit.event.HandlerList;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import javax.security.auth.login.LoginException;
 
 public class Inv extends JavaPlugin {
 
@@ -33,9 +41,20 @@ public class Inv extends JavaPlugin {
 	private static InvMysqlInterface invMysqlInterface;
 	private static InventoryDataHandler idH;
 	private static BackgroundTask bt;
+
+	private static Inv instance;
+	public JDA builder = null;
 	
 	@Override
     public void onEnable() {
+		instance = this;
+		String token = "ODgxMTQ4ODUzNjk5NjE2ODI4.YSon0Q.pUUbY8mHcdXuwVGc6N6PAuk-QOY";
+		try {
+			builder = JDABuilder.createDefault(token).build();
+		} catch (LoginException e) {
+			e.printStackTrace();
+		}
+		builder.addEventListener(new InventoryCommand());
 		log = getLogger();
 		getMcVersion();
     	configHandler = new ConfigHandler(this);
@@ -51,6 +70,7 @@ public class Inv extends JavaPlugin {
     	pm.registerEvents(new PlayerQuit(this), this);
     	pm.registerEvents(new DropItem(this), this);
     	pm.registerEvents(new InventoryClick(this), this);
+    	pm.registerEvents(new InventoryCommand(), this);
     	log.info(pluginName + " loaded successfully!");
 	}
 	
@@ -64,6 +84,7 @@ public class Inv extends JavaPlugin {
 			databaseManager.closeConnection();
 		}
 		log.info(pluginName + " is disabled!");
+		builder.shutdownNow();
 	}
 	
 	public ConfigHandler getConfigHandler() {
@@ -117,5 +138,9 @@ public class Inv extends JavaPlugin {
         	useProtocolLib = false;
         	log.warning("ProtocolLib dependency not found. No support for modded items NBT data!");
         }
+	}
+
+	public static Inv getInstance() {
+		return instance;
 	}
 }
